@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Stage package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          $package = "otome-v$version-windows-x64"
+          $stage = "dist/$package"
+
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item "target/release/otome.exe" $stage
+          Copy-Item "config.example.toml" $stage
+          Copy-Item "run.ps1" $stage
+          Copy-Item "README.md" $stage
+
+          $zip = "dist/$package.zip"
+          Compress-Archive -Path "$stage/*" -DestinationPath $zip -Force
+
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  $package.zip" | Set-Content "dist/$package.zip.sha256" -Encoding ascii
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: otome-windows-x64
+          path: |
+            dist/*.zip
+            dist/*.sha256
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.zip
+            dist/*.sha256
+          generate_release_notes: true
+          fail_on_unmatched_files: true
