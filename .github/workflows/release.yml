@@ -37,6 +37,7 @@ jobs:
           Copy-Item "target/release/otome.exe" $stage
           Copy-Item "config.example.toml" $stage
           Copy-Item "run.ps1" $stage
+          Copy-Item "start.cmd" $stage
           Copy-Item "README.md" $stage
 
           $zip = "dist/$package.zip"

@@ -23,6 +23,7 @@ OBS (NDI)  ──video/audio──▶  Otome  ──video + audio(未ミュー�
 ## 使い方
 
 このソフトウェアは **ビルド済みの `otome.exe` を使います。**
+ZIP を解凍して `start.cmd` を実行するだけで、NDI Runtime の確認から起動まで行います。
 ソースからビルドする方法は[開発者向け](#開発者向け)にまとめています。
 
 ### 必要なもの
@@ -41,7 +42,8 @@ OBS (NDI)  ──video/audio──▶  Otome  ──video + audio(未ミュー�
 ZIP に含まれるもの:
 
 - `otome.exe`
-- `run.ps1`（NDI Runtime の DLL を探して `otome.exe` を起動するスクリプト）
+- `start.cmd`（NDI Runtime の DLL を探して `otome.exe` を起動するランチャー）
+- `run.ps1`（PowerShell 版ランチャー。ExecutionPolicy の制限がある場合は `start.cmd` を使用）
 - `config.example.toml`
 - `README.md`
 
@@ -77,35 +79,16 @@ NDI 名を設定します（例: `OBS PGM`）。OBS のプログラム映像と�
 NDI 上では `ホスト名 (OBS PGM)` のように見えます。Otome の `source_name` は
 `OBS PGM` のような短い名前でも、`ホスト名 (OBS PGM)` のような完全な名前でも一致します。
 
-### 4. NDI ソースを確認
+### 4. 起動
+
+解凍したフォルダで `start.cmd` をダブルクリックするか、ターミナルで実行します。
 
 ```powershell
-.\otome.exe --list-sources
+.\start.cmd
 ```
 
-`ホスト名 (OBS PGM)` が表示されれば OK です。見つからない場合は
-[トラブルシューティング](#トラブルシューティング)を参照してください。
-
-### 5. Otome を起動
-
-```powershell
-# カレントディレクトリの otome.toml を使用
-.\otome.exe
-
-# 設定ファイルを明示する
-.\otome.exe --config .\otome.toml
-
-# 設定を一部だけコマンドラインで上書きする
-.\otome.exe --source-name "OBS PGM" --output-name "OTOME-OUT"
-```
-
-NDI Runtime の DLL が見つからず起動できない場合は、`run.ps1` 経由で起動します。
-`run.ps1` は既知の NDI Runtime の場所を `PATH` に追加してから `otome.exe` を実行します。
-
-```powershell
-.\run.ps1
-.\run.ps1 --list-sources
-```
+`start.cmd` は NDI Runtime を確認して `PATH` に追加し、カレントディレクトリの `otome.toml` を
+読み込んで `otome.exe` を起動します。`otome.toml` が無い場合はデフォルト設定で起動します。
 
 ログに次の順で出れば動作しています。
 
@@ -116,10 +99,10 @@ OBS NDI source found source=...
 NDI receiver connected
 ```
 
-停止は `Ctrl+C` です。エクスプローラーから `otome.exe` をダブルクリックしても起動できますが、
-エラー内容を確認できる PowerShell からの起動がおすすめです。
+停止は `Ctrl+C` です。エクスプローラーから `start.cmd` をダブルクリックしても起動できますが、
+エラー内容を確認できるターミナルからの起動がおすすめです。
 
-### 6. 出力 NDI ソースを受け取る
+### 5. 出力 NDI ソースを受け取る
 
 別 PC の OBS、または NDI Studio Monitor で `OTOME-OUT` を受信します。
 映像が表示され、音声メーターが動けば転送成功です。
@@ -127,7 +110,7 @@ NDI receiver connected
 > 注意: 送出元と同じ OBS のプログラムに `OTOME-OUT` を追加すると映像・音声がループします。
 > 確認には別 PC か、2 つ目の OBS インスタンス、NDI Studio Monitor を使ってください。
 
-### 7. ミュートを切り替える
+### 6. ミュートを切り替える
 
 API モード（`mode = "api"`）では `http://127.0.0.1:7878` で待ち受けます。
 
@@ -149,8 +132,9 @@ Otome のログに `mute on: NDI audio is gated` / `mute off: NDI audio is forwa
 
 ## 設定
 
-`otome.toml` をカレントディレクトリに置くと読み込まれます。`otome.exe` をフォルダ内で起動する場合は、
-`otome.exe` と同じフォルダに置いてください。ファイルが無い場合はすべてデフォルト値で動作します。
+`start.cmd` はカレントディレクトリの `otome.toml` を自動で読み込みます。`start.cmd` を
+ダブルクリックした場合は `otome.exe` と同じフォルダの `otome.toml` が使われます。
+ファイルが無い場合はすべてデフォルト値で動作します。
 
 ### `[ndi]`
 
@@ -206,33 +190,6 @@ remote_url = "http://192.168.1.10:7878"
 poll_interval_ms = 200
 ```
 
-## コマンドラインオプション
-
-ユーザー向けの起動は `otome.exe`（または `run.ps1`）です。
-
-```powershell
-# 設定ファイルを指定して起動
-.\otome.exe --config .\otome.toml
-
-# 一部の設定をコマンドラインで上書き
-.\otome.exe --source-name "OBS PGM" --output-name "OTOME-OUT"
-
-# 利用可能な NDI ソースを一覧表示
-.\otome.exe --list-sources
-
-# NDI を起動せず HTTP API のみ確認
-.\otome.exe --dry-run
-```
-
-| オプション | 説明 |
-| --- | --- |
-| `-c`, `--config <PATH>` | 設定ファイル（デフォルト `otome.toml`） |
-| `--source-name <NAME>` | `ndi.source_name` を上書き |
-| `--output-name <NAME>` | `ndi.output_name` を上書き |
-| `--mute-listen <ADDR>` | `mute.listen` を上書き |
-| `--list-sources` | NDI ソースを一覧表示して終了 |
-| `--dry-run` | NDI プロキシを起動しない |
-
 ## HTTP API
 
 `mode = "api"` のとき、`listen` で待ち受けます（CORS は全許可）。
@@ -263,7 +220,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:7878/mute `
 
 ### NDI ソースが見つからない
 
-- `.\otome.exe --list-sources` で一覧を確認する
+- OBS の NDI 出力が NDI Studio Monitor から見えるか確認する
 - OBS 側で DistroAV の Main Output が有効になっているか確認する
 - Otome と OBS が同じネットワークにいるか確認する
 - Windows ファイアウォールで NDI / Otome を許可する
@@ -282,8 +239,23 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:7878/mute `
 ### DLL が見つからない / 起動できない
 
 - NDI Runtime（NDI Tools）をインストールする
-- `run.ps1` 経由で起動する
+- `start.cmd` 経由で起動する
 - `Processing.NDI.Lib.x64.dll` のあるディレクトリを `PATH` に追加する
+
+### `run.ps1` が実行できない
+
+ダウンロードしたスクリプトは Windows にブロックされていることがあります。
+
+```powershell
+Unblock-File .\run.ps1
+.\run.ps1
+```
+
+実行ポリシーを変更できない場合は、プロセス単位で回避するか `start.cmd` を使います。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1
+```
 
 ### ポートが使用中 / API に接続できない
 
@@ -321,6 +293,17 @@ cargo run --release
 cargo run --release -- --list-sources
 cargo run --release -- --source-name "OBS PGM"
 ```
+
+`otome.exe` / `cargo run` で使えるオプション:
+
+| オプション | 説明 |
+| --- | --- |
+| `-c`, `--config <PATH>` | 設定ファイル（デフォルト `otome.toml`） |
+| `--source-name <NAME>` | `ndi.source_name` を上書き |
+| `--output-name <NAME>` | `ndi.output_name` を上書き |
+| `--mute-listen <ADDR>` | `mute.listen` を上書き |
+| `--list-sources` | NDI ソースを一覧表示して終了 |
+| `--dry-run` | NDI プロキシを起動しない |
 
 `run.ps1` を使うと、ビルド済みの `otome.exe`（`target\release` / `target\debug`）を探して起動し、
 NDI Runtime の DLL があるディレクトリを `PATH` に追加します。
@@ -367,6 +350,7 @@ git push origin v0.1.0
 | `src/mute.rs` | HTTP API サーバーと外部 API ポーリング |
 | `src/ndi_proxy.rs` | NDI ソース検索・再接続・映像/音声転送ループ・テスト |
 | `src/ndi_raw.rs` | `ndi` クレートの低レベル API ラッパー（Finder/Recv/Sender） |
-| `run.ps1` | ビルド済みバイナリの起動と NDI Runtime の `PATH` 設定 |
+| `start.cmd` | 配布版の起動と NDI Runtime の `PATH` 設定（ExecutionPolicy 非依存） |
+| `run.ps1` | PowerShell 版の起動スクリプトと NDI Runtime の `PATH` 設定 |
 | `config.example.toml` | 設定ファイルの雛形 |
 | `.github/workflows/release.yml` | `v*` タグで Windows 向け ZIP をビルドし Release に添付 |
