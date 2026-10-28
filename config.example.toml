@@ -1,0 +1,22 @@
+[ndi]
+source_name = "OBS"
+output_name = "OTOME-OUT"
+output_groups = "Public"
+bandwidth = "highest"
+color_format = "uyvy_bgra"
+clock_video = true
+clock_audio = false
+capture_timeout_ms = 500
+reconnect_delay_ms = 1000
+status_interval_ms = 5000
+
+[mute]
+mode = "api"
+listen = "0.0.0.0:7878"
+remote_url = "http://127.0.0.1:7878"
+forward_to_remote = false
+poll_interval_ms = 200
+audio_mode = "drop"
+
+[log]
+level = "info"
